@@ -2,6 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TerserPlugin = require("terser-webpack-plugin");
+
+const ENVIRONMENT = {
+  dev: 'development',
+  prod: 'production',
+  none: 'none',
+}
 
 // 获取入口文件的配置对象
 function getEntryConfigObj() {
@@ -33,16 +40,18 @@ function genrateHtmlPlugins() {
       title: '',
       filename: 'html/' + item + '.html',
       template: './staticHtml/' + item + '.html',
-      chunks: [item],
+      chunks: [item, 'ajaxs.commonFn'],
       hash: true,
+      inject: 'body',
     }));
   return htmlWebpackPlugins;
 }
 
 module.exports = function(env, argv) {
-
+  console.log('env', env);
+  const envir = env.envir || ENVIRONMENT.none;
   return {
-    mode: 'development',
+    mode: envir,
     entry: getEntryConfigObj(),
     output: {
       // webpack 如何输出结果的相关选项
@@ -54,6 +63,7 @@ module.exports = function(env, argv) {
       // publicPath: "/", // string
       // 输出解析文件的目录，url 相对于 HTML 页面
     },
+    devtool: envir === ENVIRONMENT.dev ? 'eval-cheap-source-map' : undefined,
     //  loader配置
     module: {
       rules: [
@@ -96,7 +106,9 @@ module.exports = function(env, argv) {
     },
     // 插件配置
     plugins: [new CleanWebpackPlugin()].concat(genrateHtmlPlugins()),
+    // 开发服务器配置
     devServer: {
+      open: ['/html/barChart.html'],
       static: {
         directory: path.join(__dirname, 'dist'),
         publicPath: "/",
@@ -106,6 +118,26 @@ module.exports = function(env, argv) {
       allowedHosts: 'auto',
       hot: true,
       port: 9999,
+    },
+    // 代码分割
+    optimization: {
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /([\\/]node_modules[\\/])/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      },
+      moduleIds: 'deterministic',
+      minimize: true,
+      minimizer: [new TerserPlugin({
+        //webpack 取消打包出license文件
+        extractComments: false,
+      })],
+      runtimeChunk: envir === ENVIRONMENT.dev ? 'single' : false,
     },
   }
 }
