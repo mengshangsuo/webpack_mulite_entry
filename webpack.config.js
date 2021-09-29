@@ -2,7 +2,10 @@ const path = require('path');
 const fs = require('fs');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+//webpack 取消打包出license文件
 const TerserPlugin = require("terser-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 
 const ENVIRONMENT = {
   dev: 'development',
@@ -69,6 +72,7 @@ module.exports = function(env, argv) {
       rules: [
         {
           test: /\.m?js$/,
+          include: path.resolve(__dirname, 'entry'),
           exclude: /(node_modules|bower_components)/,
           use: {
             loader: 'babel-loader',
@@ -83,17 +87,54 @@ module.exports = function(env, argv) {
         },
         {
           test: /\.css$/i,
-          use: ['style-loader', 'css-loader'],
+          use: [{
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: './css'
+            },
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              sourceMap: envir === ENVIRONMENT.dev
+            }
+          },]
         },
-        // {
-        //   test: /\.less$/i,
-        //   loader: [
-        //     // compiles Less to CSS
-        //     'style-loader',
-        //     'css-loader',
-        //     'less-loader',
-        //   ],
-        // },
+        {
+          test: /\.less$/i,
+          use: [
+            {
+              loader: MiniCssExtractPlugin.loader,
+              options: {
+                publicPath: './css'
+              },
+            },
+            {
+              loader: 'css-loader',
+              options: {
+                sourceMap: envir === ENVIRONMENT.dev
+              }
+            },
+            {
+              loader: 'postcss-loader',
+              options: {
+                postcssOptions: {
+                  plugins: [
+                    require('autoprefixer'),
+                    envir === ENVIRONMENT.dev ? undefined : require('cssnano')
+                  ],
+                },
+                sourceMap: envir === ENVIRONMENT.dev ? true : false,
+              }
+            },
+            {
+              loader: 'less-loader',
+              options: {
+                sourceMap: envir === ENVIRONMENT.dev
+              }
+            },
+          ],
+        },
         {
           test: /\.(png|svg|jpg|jpeg|gif)$/i,
           type: 'asset/resource',
@@ -105,7 +146,14 @@ module.exports = function(env, argv) {
       ],
     },
     // 插件配置
-    plugins: [new CleanWebpackPlugin()].concat(genrateHtmlPlugins()),
+    plugins: [
+      new CleanWebpackPlugin(),
+      new MiniCssExtractPlugin({
+        filename: "css/[name].chart.[hash].css",
+        chunkFilename: "[id].css",
+        ignoreOrder: false,
+      })
+    ].concat(genrateHtmlPlugins()),
     // 开发服务器配置
     devServer: {
       open: ['/html/barChart.html'],

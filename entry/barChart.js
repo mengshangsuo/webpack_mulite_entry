@@ -1,5 +1,5 @@
 import * as  echarts from 'echarts';
-
+import '../less/barChart.less';
 
 window.onload = function() {
 

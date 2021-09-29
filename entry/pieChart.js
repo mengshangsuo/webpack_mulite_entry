@@ -1,5 +1,6 @@
 
 import * as  echarts from 'echarts';
+import '../less/pieChart.less';
 
 window.onload = function() {
 
